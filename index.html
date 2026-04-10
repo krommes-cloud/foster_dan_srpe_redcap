@@ -15,10 +15,17 @@
       --panel-border: #d0d0d0;
       --text: #111;
       --muted: #555;
+
+      /* klikområde starter ved yderste venstre punkt på tværstregen */
+      --hit-left: calc(var(--line-x) - var(--tick-half));
+
+      /* tekst starter et stykke til højre for linjen */
+      --text-left: 52px;
     }
 
     * { box-sizing: border-box; }
     html, body { height: 100%; }
+
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
@@ -50,7 +57,6 @@
     .scale-wrap {
       position: relative;
       min-height: 640px;
-      padding-left: 84px;
       user-select: none;
     }
 
@@ -65,6 +71,7 @@
       pointer-events: none;
     }
 
+    /* tværstreger i top og bund, på begge sider af linjen */
     .line::before,
     .line::after {
       content: "";
@@ -83,6 +90,10 @@
       display: grid;
       grid-template-rows: repeat(101, 1fr);
       min-height: 640px;
+
+      /* klikområde går fra venstre yderpunkt på tværstregen */
+      margin-left: var(--hit-left);
+      width: calc(100% - var(--hit-left));
     }
 
     .segment {
@@ -103,7 +114,7 @@
 
     .segment-text {
       position: absolute;
-      left: 0;
+      left: var(--text-left);
       top: 50%;
       transform: translateY(-50%);
       font-size: 0;
@@ -130,13 +141,15 @@
 
     .status {
       margin-top: 18px;
-      min-height: 1.4em;
       text-align: center;
       font-size: 16px;
       color: #222;
     }
 
-    .status.muted { color: var(--muted); }
+    .status:empty {
+      display: none;
+    }
+
     .status.error { color: #8b0000; }
     .status.ok { color: #1c5e20; }
 
@@ -144,9 +157,12 @@
       :root {
         --line-x: 44px;
         --tick-half: 16px;
+        --hit-left: calc(var(--line-x) - var(--tick-half));
+        --text-left: 44px;
       }
+
       .panel { padding: 20px; }
-      .scale-wrap { padding-left: 72px; min-height: 560px; }
+      .scale-wrap { min-height: 560px; }
       .segments { min-height: 560px; }
       .segment { min-height: 5px; }
     }
@@ -162,7 +178,7 @@
       <div class="marker" id="marker" aria-hidden="true"></div>
     </div>
 
-    <div class="status muted" id="status">Vælg et punkt på skalaen.</div>
+    <div class="status" id="status"></div>
   </main>
 
   <script>
@@ -192,8 +208,8 @@
       const status = document.getElementById('status');
 
       function setStatus(message, kind) {
-        status.textContent = message;
-        status.className = 'status ' + (kind || 'muted');
+        status.textContent = message || '';
+        status.className = 'status' + (kind ? ' ' + kind : '');
       }
 
       function saveValue(value) {
@@ -233,10 +249,10 @@
           const rect = seg.getBoundingClientRect();
           const parentRect = segments.getBoundingClientRect();
           const centerY = rect.top - parentRect.top + rect.height / 2;
+
           marker.style.top = centerY + 'px';
           marker.style.display = 'block';
 
-          setStatus('Gemmer …', 'muted');
           try {
             await saveValue(value);
             setStatus('Tak for din besvarelse, den er registreret.', 'ok');
