@@ -17,6 +17,12 @@
       --hit-width: 210px;
 
       --text-left: 62px;
+
+      /* Lille buffer så første og sidste anker ikke bliver klippet */
+      --top-pad: 10px;
+      --bottom-pad: 10px;
+
+      /* Samlet højde skal stadig passe i REDCap embed */
       --scale-h: 450px;
     }
 
@@ -57,8 +63,8 @@
     .line {
       position: absolute;
       left: var(--line-x);
-      top: 0;
-      bottom: 0;
+      top: var(--top-pad);
+      bottom: var(--bottom-pad);
       width: var(--line-w);
       background: #222;
       transform: translateX(calc(var(--line-w) / -2));
@@ -86,9 +92,9 @@
     .segments {
       position: absolute;
       left: var(--hit-left);
-      top: 0;
+      top: var(--top-pad);
       width: var(--hit-width);
-      height: 100%;
+      height: calc(100% - var(--top-pad) - var(--bottom-pad));
       display: grid;
       grid-template-rows: repeat(101, minmax(0, 1fr));
     }
@@ -140,25 +146,31 @@
       pointer-events: none;
     }
 
-    .status {
-      margin-top: 2px;
-      min-height: 1em;
-      text-align: left;
-      font-size: 11px;
-      line-height: 1.1;
-      color: #222;
-    }
-
-    .status:empty {
+    .checkmark {
+      position: absolute;
+      left: 2px;
+      top: 8px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #1c8c3a;
+      color: #fff;
       display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+      pointer-events: none;
     }
 
-    .status.error {
-      color: #8b0000;
+    .checkmark.show {
+      display: flex;
     }
 
-    .status.ok {
-      color: #1c5e20;
+    .status {
+      display: none;
     }
 
     @media (max-width: 600px) {
@@ -169,14 +181,20 @@
         --hit-width: 170px;
         --text-left: 54px;
         --scale-h: 450px;
+        --top-pad: 10px;
+        --bottom-pad: 10px;
       }
 
       .segment.anchor .segment-text {
         font-size: 12px;
       }
 
-      .status {
-        font-size: 10px;
+      .checkmark {
+        left: 0;
+        top: 6px;
+        width: 24px;
+        height: 24px;
+        font-size: 16px;
       }
     }
   </style>
@@ -184,6 +202,7 @@
 <body>
   <main class="panel">
     <div class="scale-wrap" aria-label="Foster RPE 0 til 100">
+      <div class="checkmark" id="checkmark" aria-hidden="true">✓</div>
       <div class="line" aria-hidden="true"></div>
       <div class="segments" id="segments"></div>
       <div class="marker" id="marker" aria-hidden="true"></div>
@@ -217,6 +236,7 @@
       const segments = document.getElementById('segments');
       const marker = document.getElementById('marker');
       const status = document.getElementById('status');
+      const checkmark = document.getElementById('checkmark');
 
       function setStatus(message, kind) {
         status.textContent = message || '';
@@ -261,13 +281,15 @@
           const parentRect = segments.getBoundingClientRect();
           const centerY = rect.top - parentRect.top + rect.height / 2;
 
-          marker.style.top = centerY + 'px';
+          marker.style.top = (centerY + parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top-pad') || 0)) + 'px';
           marker.style.display = 'block';
 
           try {
             await saveValue(value);
+            checkmark.classList.add('show');
             setStatus('Registreret.', 'ok');
           } catch (err) {
+            checkmark.classList.remove('show');
             setStatus(err.message || 'Kunne ikke gemme værdien.', 'error');
           }
         });
