@@ -80,9 +80,10 @@ exports.handler = async (event) => {
     const RECORD_ID_FIELD = "record_id";
 
     const redcapRecord = {
-      [RECORD_ID_FIELD]: record,
-      [field]: value
-    };
+  [RECORD_ID_FIELD]: record,
+  [field]: value,
+  slider_fedten_rundt_2_complete: "2"
+};
 
     if (event_name) {
       redcapRecord.redcap_event_name = event_name;
