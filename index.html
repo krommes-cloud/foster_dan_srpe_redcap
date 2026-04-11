@@ -2,17 +2,26 @@
 <html lang="da">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Hvordan var din træning?</title>
   <style>
     :root {
       --line-x: 56px;
       --line-w: 4px;
       --tick-half: 20px;
+
       --panel-w: 520px;
       --text: #111;
-      --hit-left: calc(var(--line-x) - var(--tick-half));
-      --text-left: 52px;
+
+      /* Klikområde */
+      --hit-left: 24px;
+      --hit-width: 230px;
+
+      /* Tekstplacering */
+      --text-left: 78px;
+
+      /* Højde */
+      --scale-h: 760px;
     }
 
     * {
@@ -62,7 +71,7 @@
 
     .scale-wrap {
       position: relative;
-      min-height: 760px;
+      height: var(--scale-h);
       user-select: none;
     }
 
@@ -96,12 +105,13 @@
     }
 
     .segments {
-      position: relative;
+      position: absolute;
+      left: var(--hit-left);
+      top: 0;
+      width: var(--hit-width);
+      height: 100%;
       display: grid;
       grid-template-rows: repeat(101, minmax(0, 1fr));
-      min-height: 760px;
-      margin-left: var(--hit-left);
-      width: calc(100% - var(--hit-left));
     }
 
     .segment {
@@ -122,7 +132,7 @@
 
     .segment-text {
       position: absolute;
-      left: var(--text-left);
+      left: calc(var(--text-left) - var(--hit-left));
       top: 50%;
       transform: translateY(-50%);
       font-size: 0;
@@ -130,6 +140,7 @@
       white-space: nowrap;
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
+      pointer-events: none;
     }
 
     .segment.anchor .segment-text {
@@ -175,8 +186,12 @@
       :root {
         --line-x: 44px;
         --tick-half: 16px;
-        --hit-left: calc(var(--line-x) - var(--tick-half));
-        --text-left: 34px;
+
+        --hit-left: 16px;
+        --hit-width: 180px;
+
+        --text-left: 62px;
+        --scale-h: 620px;
       }
 
       body {
@@ -191,14 +206,6 @@
         margin: 0 0 12px 0;
         font-size: 20px;
         line-height: 1.05;
-      }
-
-      .scale-wrap {
-        min-height: 620px;
-      }
-
-      .segments {
-        min-height: 620px;
       }
 
       .segment.anchor .segment-text {
