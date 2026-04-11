@@ -10,19 +10,17 @@
       --line-w: 4px;
       --tick-half: 16px;
 
-      --panel-w: 520px;
+      --panel-w: 300px;
       --text: #111;
 
-      --hit-left: 14px;
-      --hit-width: 210px;
+      --hit-left: 18px;
+      --hit-width: 190px;
 
-      --text-left: 62px;
+      --text-left: 60px;
 
-      /* Lille buffer så første og sidste anker ikke bliver klippet */
       --top-pad: 10px;
       --bottom-pad: 10px;
 
-      /* Samlet højde skal stadig passe i REDCap embed */
       --scale-h: 450px;
     }
 
@@ -39,6 +37,8 @@
       overflow: hidden;
       font-family: Arial, Helvetica, sans-serif;
       color: var(--text);
+      width: 100%;
+      height: 100%;
     }
 
     body {
@@ -148,17 +148,18 @@
 
     .checkmark {
       position: absolute;
-      left: 2px;
-      top: 8px;
-      width: 28px;
-      height: 28px;
+      left: 0px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       background: #1c8c3a;
       color: #fff;
       display: none;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
       line-height: 1;
       box-shadow: 0 1px 2px rgba(0,0,0,0.15);
@@ -175,14 +176,15 @@
 
     @media (max-width: 600px) {
       :root {
-        --line-x: 38px;
+        --line-x: 40px;
         --tick-half: 14px;
-        --hit-left: 10px;
+        --hit-left: 14px;
         --hit-width: 170px;
         --text-left: 54px;
         --scale-h: 450px;
         --top-pad: 10px;
         --bottom-pad: 10px;
+        --panel-w: 260px;
       }
 
       .segment.anchor .segment-text {
@@ -190,11 +192,10 @@
       }
 
       .checkmark {
-        left: 0;
-        top: 6px;
-        width: 24px;
-        height: 24px;
-        font-size: 16px;
+        left: -2px;
+        width: 22px;
+        height: 22px;
+        font-size: 15px;
       }
     }
   </style>
@@ -279,9 +280,10 @@
         seg.addEventListener('click', async () => {
           const rect = seg.getBoundingClientRect();
           const parentRect = segments.getBoundingClientRect();
+          const topPad = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top-pad')) || 0;
           const centerY = rect.top - parentRect.top + rect.height / 2;
 
-          marker.style.top = (centerY + parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top-pad') || 0)) + 'px';
+          marker.style.top = (centerY + topPad) + 'px';
           marker.style.display = 'block';
 
           try {
