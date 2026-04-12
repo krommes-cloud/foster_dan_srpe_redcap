@@ -1,352 +1,111 @@
-<!doctype html>
-<html lang="da">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Foster RPE</title>
-  <style>
-    :root {
-      --text: #111;
-      --viewport-h: 450px;
-
-      /* Mobil-først geometri */
-      --design-w: 220px;
-      --design-h: 450px;
-
-      --line-x: 30px;
-      --line-w: 4px;
-      --tick-half: 14px;
-
-      --top-pad: 12px;
-      --bottom-pad: 12px;
-
-      /* Klikområde starter helt ved venstre kant, så der ikke er hvid luft før stregen */
-      --hit-left: 0px;
-      --hit-width: 190px;
-
-      /* Tekst lidt tættere på stregen */
-      --text-left: 44px;
-
-      /* Smallere og mindre font */
-      --anchor-font: "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
-      --anchor-size: 12px;
-
-      /* Yderste ankre justeres lidt væk fra kanten */
-      --top-anchor-shift: 4px;
-      --bottom-anchor-shift: -4px;
-
-      --check-left: 0px;
-      --check-size: 20px;
-    }
-
-    * {
-      box-sizing: border-box;
-      -webkit-text-size-adjust: 100%;
-      text-size-adjust: 100%;
-    }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #fff;
-      font-family: Arial, Helvetica, sans-serif;
-      color: var(--text);
-    }
-
-    .viewport {
-      width: 100%;
-      height: var(--viewport-h);
-      overflow: hidden;
-      position: relative;
-      background: #fff;
-    }
-
-    .stage {
-      position: absolute;
-      top: 0;
-      left: 50%;
-      width: var(--design-w);
-      height: var(--design-h);
-      transform-origin: top center;
-      transform: translateX(-50%) scale(1);
-    }
-
-    .scale-wrap {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      user-select: none;
-      overflow: hidden;
-    }
-
-    .line {
-      position: absolute;
-      left: var(--line-x);
-      top: var(--top-pad);
-      bottom: var(--bottom-pad);
-      width: var(--line-w);
-      background: #222;
-      transform: translateX(calc(var(--line-w) / -2));
-      pointer-events: none;
-    }
-
-    .line::before,
-    .line::after {
-      content: "";
-      position: absolute;
-      left: calc(var(--tick-half) * -1);
-      width: calc(var(--tick-half) * 2);
-      height: 3px;
-      background: #222;
-    }
-
-    .line::before {
-      top: 0;
-    }
-
-    .line::after {
-      bottom: 0;
-    }
-
-    .segments {
-      position: absolute;
-      left: var(--hit-left);
-      top: var(--top-pad);
-      width: var(--hit-width);
-      height: calc(100% - var(--top-pad) - var(--bottom-pad));
-      display: grid;
-      grid-template-rows: repeat(101, minmax(0, 1fr));
-    }
-
-    .segment {
-      position: relative;
-      display: block;
-      width: 100%;
-      min-height: 0;
-      cursor: pointer;
-      background: transparent;
-      border: 0;
-      padding: 0;
-      margin: 0;
-      font: inherit;
-      text-align: left;
-      color: inherit;
-    }
-
-    .segment-text {
-      position: absolute;
-      left: calc(var(--text-left) - var(--hit-left));
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 0;
-      line-height: 1;
-      white-space: nowrap;
-      pointer-events: none;
-      -webkit-text-size-adjust: 100%;
-      text-size-adjust: 100%;
-    }
-
-    .segment.anchor .segment-text {
-      font-family: var(--anchor-font);
-      font-size: var(--anchor-size);
-      line-height: 1;
-      font-weight: 400;
-      letter-spacing: 0;
-    }
-
-    /* Flyt kun yderste ankre lidt væk fra kanten */
-    .segment[data-value="0"] .segment-text {
-      transform: translateY(calc(-50% + var(--top-anchor-shift)));
-    }
-
-    .segment[data-value="100"] .segment-text {
-      transform: translateY(calc(-50% + var(--bottom-anchor-shift)));
-    }
-
-    .marker {
-      position: absolute;
-      left: var(--line-x);
-      width: 10px;
-      height: 10px;
-      margin-left: -5px;
-      margin-top: -5px;
-      border-radius: 50%;
-      background: #111;
-      display: none;
-      pointer-events: none;
-    }
-
-    .checkmark {
-      position: absolute;
-      left: var(--check-left);
-      top: 50%;
-      transform: translateY(-50%);
-      width: var(--check-size);
-      height: var(--check-size);
-      border-radius: 50%;
-      background: #1c8c3a;
-      color: #fff;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
-      pointer-events: none;
-    }
-
-    .checkmark.show {
-      display: flex;
-    }
-
-    .status {
-      display: none;
-    }
-
-    /* Laptop må gerne være lidt større, men samme logik */
-    @media (min-width: 601px) {
-      :root {
-        --design-w: 240px;
-        --line-x: 34px;
-        --tick-half: 14px;
-        --hit-left: 0px;
-        --hit-width: 205px;
-        --text-left: 50px;
-        --anchor-size: 13px;
-        --check-left: 0px;
-        --check-size: 22px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="viewport">
-    <div class="stage" id="stage">
-      <main class="scale-wrap" aria-label="Foster RPE 0 til 100">
-        <div class="checkmark" id="checkmark" aria-hidden="true">✓</div>
-        <div class="line" aria-hidden="true"></div>
-        <div class="segments" id="segments"></div>
-        <div class="marker" id="marker" aria-hidden="true"></div>
-      </main>
-    </div>
-  </div>
-
-  <div class="status" id="status"></div>
-
-  <script>
-    (function () {
-      const anchors = new Map([
-        [0, 'Ikke anstrengende'],
-        [10, 'Ekstremt nem'],
-        [20, 'Nem'],
-        [30, 'Moderat'],
-        [40, 'Lidt hård'],
-        [50, 'Hård'],
-        [70, 'Meget hård'],
-        [100, 'Maksimal']
-      ]);
-
-      const params = new URLSearchParams(window.location.search);
-      const context = {
-        record: params.get('record') || '',
-        event_name: params.get('event') || '',
-        instance: params.get('instance') || '',
-        repeat_instrument: params.get('repeat_instrument') || '',
-        field: params.get('field') || 'srpe_0100'
+exports.handler = async function (event) {
+  try {
+    if (event.httpMethod !== 'POST') {
+      return {
+        statusCode: 405,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Method not allowed' })
       };
+    }
 
-      const stage = document.getElementById('stage');
-      const segments = document.getElementById('segments');
-      const marker = document.getElementById('marker');
-      const status = document.getElementById('status');
-      const checkmark = document.getElementById('checkmark');
+    const REDCAP_API_URL = process.env.REDCAP_API_URL;
+    const REDCAP_API_TOKEN = process.env.REDCAP_API_TOKEN;
+    const RECORD_ID_FIELD = 'record_id';
 
-      function setStatus(message, kind) {
-        status.textContent = message || '';
-        status.className = 'status' + (kind ? ' ' + kind : '');
-      }
+    if (!REDCAP_API_URL || !REDCAP_API_TOKEN) {
+      return {
+        statusCode: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Missing REDCap API configuration' })
+      };
+    }
 
-      function saveValue(value) {
-        return fetch('/.netlify/functions/save-rpe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            record: context.record,
-            event_name: context.event_name,
-            instance: context.instance,
-            repeat_instrument: context.repeat_instrument,
-            field: context.field,
-            value: value
-          })
-        }).then(async (res) => {
-          const body = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            throw new Error(body.error || 'Kunne ikke gemme værdien.');
-          }
-          return body;
-        });
-      }
+    const body = JSON.parse(event.body || '{}');
 
-      function fitStage() {
-        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
-        const designWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--design-w'));
-        const maxScale = 1;
-        const minScale = 0.78;
+    const {
+      record,
+      event_name,
+      instance,
+      repeat_instrument,
+      field,
+      value,
+      complete_field
+    } = body;
 
-        const availableWidth = Math.max(180, viewportWidth - 4);
-        let scale = availableWidth / designWidth;
+    if (
+      !record ||
+      !event_name ||
+      !instance ||
+      !repeat_instrument ||
+      !field ||
+      value === undefined ||
+      value === null
+    ) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Missing required parameters' })
+      };
+    }
 
-        if (scale > maxScale) scale = maxScale;
-        if (scale < minScale) scale = minScale;
+    const redcapRecord = {
+      [RECORD_ID_FIELD]: String(record),
+      redcap_event_name: String(event_name),
+      redcap_repeat_instrument: String(repeat_instrument),
+      redcap_repeat_instance: String(instance),
+      [field]: String(value)
+    };
 
-        stage.style.transform = `translateX(-50%) scale(${scale})`;
-      }
+    if (complete_field) {
+      redcapRecord[complete_field] = '2';
+    }
 
-      for (let value = 0; value <= 100; value += 1) {
-        const seg = document.createElement('button');
-        seg.type = 'button';
-        seg.className = 'segment' + (anchors.has(value) ? ' anchor' : '');
-        seg.dataset.value = String(value);
-        seg.setAttribute('aria-label', anchors.get(value) || String(value));
+    const formData = new URLSearchParams();
+    formData.append('token', REDCAP_API_TOKEN);
+    formData.append('content', 'record');
+    formData.append('format', 'json');
+    formData.append('type', 'flat');
+    formData.append('overwriteBehavior', 'overwrite');
+    formData.append('forceAutoNumber', 'false');
+    formData.append('data', JSON.stringify([redcapRecord]));
+    formData.append('returnContent', 'count');
+    formData.append('returnFormat', 'json');
 
-        const text = document.createElement('span');
-        text.className = 'segment-text';
-        text.textContent = anchors.get(value) || '';
-        seg.appendChild(text);
+    const response = await fetch(REDCAP_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: formData.toString()
+    });
 
-        seg.addEventListener('click', async () => {
-          const rect = seg.getBoundingClientRect();
-          const parentRect = segments.getBoundingClientRect();
-          const topPad = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top-pad')) || 0;
-          const centerY = rect.top - parentRect.top + rect.height / 2;
+    const text = await response.text();
 
-          marker.style.top = (centerY + topPad) + 'px';
-          marker.style.display = 'block';
+    if (!response.ok) {
+      return {
+        statusCode: 502,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'REDCap API error',
+          status: response.status,
+          details: text
+        })
+      };
+    }
 
-          try {
-            await saveValue(value);
-            checkmark.classList.add('show');
-            setStatus('Registreret.', 'ok');
-          } catch (err) {
-            checkmark.classList.remove('show');
-            setStatus(err.message || 'Kunne ikke gemme værdien.', 'error');
-          }
-        });
-
-        segments.appendChild(seg);
-      }
-
-      fitStage();
-      window.addEventListener('resize', fitStage);
-
-      if (!context.record) {
-        setStatus('Manglende record-kontekst i URL.', 'error');
-      }
-    })();
-  </script>
-</body>
-</html>
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ok: true, response: text })
+    };
+  } catch (err) {
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        error: 'Server error',
+        details: err.message
+      })
+    };
+  }
+};
