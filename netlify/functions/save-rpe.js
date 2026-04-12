@@ -1,47 +1,26 @@
-exports.handler = async (event) => {
-  if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type"
-      },
-      body: JSON.stringify({ error: "Method not allowed" })
-    };
-  }
-
-  if (event.httpMethod === "OPTIONS") {
-    return {
-      statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type"
-      },
-      body: ""
-    };
-  }
-
+exports.handler = async function (event) {
   try {
+    if (event.httpMethod !== 'POST') {
+      return {
+        statusCode: 405,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Method not allowed' })
+      };
+    }
+
     const REDCAP_API_URL = process.env.REDCAP_API_URL;
     const REDCAP_API_TOKEN = process.env.REDCAP_API_TOKEN;
+    const RECORD_ID_FIELD = 'record_id';
 
     if (!REDCAP_API_URL || !REDCAP_API_TOKEN) {
       return {
         statusCode: 500,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        },
-        body: JSON.stringify({
-          error: "Missing REDCAP_API_URL or REDCAP_API_TOKEN"
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Missing REDCap API configuration' })
       };
     }
 
-    const body = JSON.parse(event.body || "{}");
+    const body = JSON.parse(event.body || '{}');
 
     const {
       record,
@@ -49,120 +28,83 @@ exports.handler = async (event) => {
       instance,
       repeat_instrument,
       field,
-      value
+      value,
+      complete_field
     } = body;
 
     if (
-      record === undefined ||
-      record === null ||
+      !record ||
+      !event_name ||
+      !instance ||
+      !repeat_instrument ||
       !field ||
       value === undefined ||
       value === null
     ) {
       return {
         statusCode: 400,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        },
-        body: JSON.stringify({
-          error: "Missing one or more required values: record, field, value"
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Missing required parameters' })
       };
     }
 
-    /*
-      VIGTIGT:
-      Hvis jeres record-id felt IKKE hedder record_id, så ændr linjen nedenfor.
-      Eksempel:
-      const RECORD_ID_FIELD = "study_id";
-    */
-    const RECORD_ID_FIELD = "record_id";
-
     const redcapRecord = {
-  [RECORD_ID_FIELD]: record,
-  [field]: value,
-  slider_fedten_rundt_2_complete: "2"
-};
+      [RECORD_ID_FIELD]: String(record),
+      redcap_event_name: String(event_name),
+      redcap_repeat_instrument: String(repeat_instrument),
+      redcap_repeat_instance: String(instance),
+      [field]: String(value)
+    };
 
-    if (event_name) {
-      redcapRecord.redcap_event_name = event_name;
-    }
-
-    if (repeat_instrument) {
-      redcapRecord.redcap_repeat_instrument = repeat_instrument;
-    }
-
-    if (instance) {
-      redcapRecord.redcap_repeat_instance = instance;
+    if (complete_field) {
+      redcapRecord[complete_field] = '2';
     }
 
     const formData = new URLSearchParams();
-    formData.append("token", REDCAP_API_TOKEN);
-    formData.append("content", "record");
-    formData.append("action", "import");
-    formData.append("format", "json");
-    formData.append("type", "flat");
-    formData.append("overwriteBehavior", "overwrite");
-    formData.append("forceAutoNumber", "false");
-    formData.append("data", JSON.stringify([redcapRecord]));
-    formData.append("returnContent", "count");
-    formData.append("returnFormat", "json");
+    formData.append('token', REDCAP_API_TOKEN);
+    formData.append('content', 'record');
+    formData.append('format', 'json');
+    formData.append('type', 'flat');
+    formData.append('overwriteBehavior', 'overwrite');
+    formData.append('forceAutoNumber', 'false');
+    formData.append('data', JSON.stringify([redcapRecord]));
+    formData.append('returnContent', 'count');
+    formData.append('returnFormat', 'json');
 
-    const redcapResponse = await fetch(REDCAP_API_URL, {
-      method: "POST",
+    const response = await fetch(REDCAP_API_URL, {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
       body: formData.toString()
     });
 
-    const responseText = await redcapResponse.text();
+    const text = await response.text();
 
-    if (!redcapResponse.ok) {
+    if (!response.ok) {
       return {
         statusCode: 502,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          error: "REDCap API error",
-          status: redcapResponse.status,
-          details: responseText
+          error: 'REDCap API error',
+          status: response.status,
+          details: text
         })
       };
     }
 
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*"
-      },
-      body: JSON.stringify({
-        ok: true,
-        redcap_response: responseText,
-        saved: {
-          record,
-          event_name: event_name || null,
-          instance: instance || null,
-          repeat_instrument: repeat_instrument || null,
-          field,
-          value
-        }
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ok: true, response: text })
     };
   } catch (err) {
     return {
       statusCode: 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*"
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        error: "Unhandled server error",
-        details: String(err)
+        error: 'Server error',
+        details: err.message
       })
     };
   }
