@@ -6,22 +6,35 @@
   <title>Foster RPE</title>
   <style>
     :root {
-      --line-x: 44px;
+      --text: #111;
+
+      /* Embed-højden som REDCap i praksis giver os */
+      --viewport-h: 450px;
+
+      /* Indre, "rigtig" geometri for skalaen */
+      --design-w: 260px;
+      --design-h: 450px;
+
+      --line-x: 58px;
       --line-w: 4px;
       --tick-half: 16px;
 
-      --panel-w: 300px;
-      --text: #111;
+      --top-pad: 12px;
+      --bottom-pad: 12px;
 
-      --hit-left: 18px;
-      --hit-width: 190px;
+      /* Klikområde, fast og ensartet */
+      --hit-left: 24px;
+      --hit-width: 205px;
 
-      --text-left: 60px;
+      /* Tekstplacering */
+      --text-left: 76px;
 
-      --top-pad: 10px;
-      --bottom-pad: 10px;
+      /* Typografi */
+      --anchor-size: 15px;
 
-      --scale-h: 450px;
+      /* Grønt hak */
+      --check-left: 2px;
+      --check-size: 24px;
     }
 
     * {
@@ -33,29 +46,40 @@
     html, body {
       margin: 0;
       padding: 0;
-      background: #fff;
-      overflow: hidden;
-      font-family: Arial, Helvetica, sans-serif;
-      color: var(--text);
       width: 100%;
       height: 100%;
+      overflow: hidden;
+      background: #fff;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
     }
 
     body {
       padding: 0;
     }
 
-    .panel {
+    .viewport {
       width: 100%;
-      max-width: var(--panel-w);
-      margin: 0 auto;
+      height: var(--viewport-h);
+      overflow: hidden;
+      position: relative;
       background: #fff;
-      padding: 0;
+    }
+
+    .stage {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: var(--design-w);
+      height: var(--design-h);
+      transform-origin: top center;
+      transform: translateX(-50%) scale(1);
     }
 
     .scale-wrap {
       position: relative;
-      height: var(--scale-h);
+      width: 100%;
+      height: 100%;
       user-select: none;
       overflow: hidden;
     }
@@ -128,7 +152,7 @@
     }
 
     .segment.anchor .segment-text {
-      font-size: 15px;
+      font-size: var(--anchor-size);
       line-height: 1;
       font-weight: 400;
     }
@@ -148,11 +172,11 @@
 
     .checkmark {
       position: absolute;
-      left: 0px;
+      left: var(--check-left);
       top: 50%;
       transform: translateY(-50%);
-      width: 24px;
-      height: 24px;
+      width: var(--check-size);
+      height: var(--check-size);
       border-radius: 50%;
       background: #1c8c3a;
       color: #fff;
@@ -176,41 +200,33 @@
 
     @media (max-width: 600px) {
       :root {
-        --line-x: 40px;
+        /* Vi beholder samme indre geometri-logik, men gør scenen mere kompakt */
+        --design-w: 220px;
+        --line-x: 48px;
         --tick-half: 14px;
-        --hit-left: 14px;
+        --hit-left: 18px;
         --hit-width: 170px;
-        --text-left: 54px;
-        --scale-h: 450px;
-        --top-pad: 10px;
-        --bottom-pad: 10px;
-        --panel-w: 260px;
-      }
-
-      .segment.anchor .segment-text {
-        font-size: 12px;
-      }
-
-      .checkmark {
-        left: -2px;
-        width: 22px;
-        height: 22px;
-        font-size: 15px;
+        --text-left: 64px;
+        --anchor-size: 13px;
+        --check-left: -2px;
+        --check-size: 22px;
       }
     }
   </style>
 </head>
 <body>
-  <main class="panel">
-    <div class="scale-wrap" aria-label="Foster RPE 0 til 100">
-      <div class="checkmark" id="checkmark" aria-hidden="true">✓</div>
-      <div class="line" aria-hidden="true"></div>
-      <div class="segments" id="segments"></div>
-      <div class="marker" id="marker" aria-hidden="true"></div>
+  <div class="viewport">
+    <div class="stage" id="stage">
+      <main class="scale-wrap" aria-label="Foster RPE 0 til 100">
+        <div class="checkmark" id="checkmark" aria-hidden="true">✓</div>
+        <div class="line" aria-hidden="true"></div>
+        <div class="segments" id="segments"></div>
+        <div class="marker" id="marker" aria-hidden="true"></div>
+      </main>
     </div>
+  </div>
 
-    <div class="status" id="status"></div>
-  </main>
+  <div class="status" id="status"></div>
 
   <script>
     (function () {
@@ -234,6 +250,7 @@
         field: params.get('field') || 'srpe_0100'
       };
 
+      const stage = document.getElementById('stage');
       const segments = document.getElementById('segments');
       const marker = document.getElementById('marker');
       const status = document.getElementById('status');
@@ -263,6 +280,21 @@
           }
           return body;
         });
+      }
+
+      function fitStage() {
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const designWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--design-w'));
+        const maxScale = 1;
+        const minScale = 0.72;
+
+        const availableWidth = Math.max(180, viewportWidth - 8);
+        let scale = availableWidth / designWidth;
+
+        if (scale > maxScale) scale = maxScale;
+        if (scale < minScale) scale = minScale;
+
+        stage.style.transform = `translateX(-50%) scale(${scale})`;
       }
 
       for (let value = 0; value <= 100; value += 1) {
@@ -298,6 +330,9 @@
 
         segments.appendChild(seg);
       }
+
+      fitStage();
+      window.addEventListener('resize', fitStage);
 
       if (!context.record) {
         setStatus('Manglende record-kontekst i URL.', 'error');
