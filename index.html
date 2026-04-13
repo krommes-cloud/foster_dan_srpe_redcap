@@ -9,7 +9,6 @@
       --text: #111;
       --viewport-h: 450px;
 
-      /* Mobil-først geometri */
       --design-w: 220px;
       --design-h: 450px;
 
@@ -20,22 +19,18 @@
       --top-pad: 12px;
       --bottom-pad: 12px;
 
-      /* Klikområde starter helt ved venstre kant, så der ikke er hvid luft før stregen */
       --hit-left: 0px;
       --hit-width: 190px;
 
-      /* Tekst lidt tættere på stregen */
       --text-left: 44px;
 
-      /* Smallere og mindre font */
       --anchor-font: "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
       --anchor-size: 12px;
 
-      /* Yderste ankre justeres lidt væk fra kanten */
       --top-anchor-shift: 4px;
       --bottom-anchor-shift: -4px;
 
-      --check-left: 0px;
+      --check-left: 6px;
       --check-size: 20px;
     }
 
@@ -91,6 +86,7 @@
       background: #222;
       transform: translateX(calc(var(--line-w) / -2));
       pointer-events: none;
+      z-index: 1;
     }
 
     .line::before,
@@ -119,6 +115,7 @@
       height: calc(100% - var(--top-pad) - var(--bottom-pad));
       display: grid;
       grid-template-rows: repeat(101, minmax(0, 1fr));
+      z-index: 5;
     }
 
     .segment {
@@ -157,7 +154,6 @@
       letter-spacing: 0;
     }
 
-    /* Flyt kun yderste ankre lidt væk fra kanten */
     .segment[data-value="0"] .segment-text {
       transform: translateY(calc(-50% + var(--top-anchor-shift)));
     }
@@ -177,6 +173,7 @@
       background: #111;
       display: none;
       pointer-events: none;
+      z-index: 15;
     }
 
     .checkmark {
@@ -197,6 +194,7 @@
       line-height: 1;
       box-shadow: 0 1px 2px rgba(0,0,0,0.15);
       pointer-events: none;
+      z-index: 20;
     }
 
     .checkmark.show {
@@ -207,7 +205,6 @@
       display: none;
     }
 
-    /* Laptop må gerne være lidt større, men samme logik */
     @media (min-width: 601px) {
       :root {
         --design-w: 240px;
@@ -217,7 +214,7 @@
         --hit-width: 205px;
         --text-left: 50px;
         --anchor-size: 13px;
-        --check-left: 0px;
+        --check-left: 8px;
         --check-size: 22px;
       }
     }
@@ -256,7 +253,8 @@
         event_name: params.get('event') || '',
         instance: params.get('instance') || '',
         repeat_instrument: params.get('repeat_instrument') || '',
-        field: params.get('field') || 'srpe_0100'
+        field: params.get('field') || '',
+        complete_field: params.get('complete_field') || ''
       };
 
       const stage = document.getElementById('stage');
@@ -280,7 +278,8 @@
             instance: context.instance,
             repeat_instrument: context.repeat_instrument,
             field: context.field,
-            value: value
+            value: value,
+            complete_field: context.complete_field
           })
         }).then(async (res) => {
           const body = await res.json().catch(() => ({}));
@@ -330,6 +329,7 @@
           try {
             await saveValue(value);
             checkmark.classList.add('show');
+            marker.style.display = 'none';
             setStatus('Registreret.', 'ok');
           } catch (err) {
             checkmark.classList.remove('show');
@@ -343,8 +343,8 @@
       fitStage();
       window.addEventListener('resize', fitStage);
 
-      if (!context.record) {
-        setStatus('Manglende record-kontekst i URL.', 'error');
+      if (!context.record || !context.event_name || !context.instance || !context.repeat_instrument || !context.field) {
+        setStatus('Manglende kontekst i URL.', 'error');
       }
     })();
   </script>
