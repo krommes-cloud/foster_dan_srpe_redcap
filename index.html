@@ -30,7 +30,7 @@
       --top-anchor-shift: 4px;
       --bottom-anchor-shift: -4px;
 
-      --check-left: 6px;
+      --check-left: 4px;
       --check-size: 20px;
     }
 
@@ -176,33 +176,65 @@
       z-index: 15;
     }
 
-    .checkmark {
+    .success-box {
       position: absolute;
-      left: var(--check-left);
+      left: 0;
       top: 50%;
       transform: translateY(-50%);
+      width: 62px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .success-box.show {
+      display: flex;
+    }
+
+    .checkmark {
       width: var(--check-size);
       height: var(--check-size);
       border-radius: 50%;
       background: #1c8c3a;
       color: #fff;
-      display: none;
+      display: flex;
       align-items: center;
       justify-content: center;
       font-size: 14px;
       font-weight: 700;
       line-height: 1;
       box-shadow: 0 1px 2px rgba(0,0,0,0.15);
-      pointer-events: none;
-      z-index: 20;
+      margin-bottom: 6px;
     }
 
-    .checkmark.show {
-      display: flex;
+    .close-text {
+      font-size: 10px;
+      line-height: 1.1;
+      text-align: center;
+      color: #1c8c3a;
+      font-weight: 600;
+      white-space: nowrap;
     }
 
     .status {
-      display: none;
+      position: absolute;
+      left: 70px;
+      right: 0;
+      bottom: 4px;
+      min-height: 18px;
+      font-size: 11px;
+      line-height: 1.2;
+      color: #8b0000;
+      background: #fff;
+      z-index: 25;
+      padding-right: 4px;
+    }
+
+    .status.ok {
+      color: #1c5e20;
     }
 
     @media (min-width: 601px) {
@@ -214,8 +246,19 @@
         --hit-width: 205px;
         --text-left: 50px;
         --anchor-size: 13px;
-        --check-left: 8px;
         --check-size: 22px;
+      }
+
+      .success-box {
+        width: 70px;
+      }
+
+      .close-text {
+        font-size: 11px;
+      }
+
+      .status {
+        font-size: 12px;
       }
     }
   </style>
@@ -224,15 +267,18 @@
   <div class="viewport">
     <div class="stage" id="stage">
       <main class="scale-wrap" aria-label="Foster RPE 0 til 100">
-        <div class="checkmark" id="checkmark" aria-hidden="true">✓</div>
+        <div class="success-box" id="successBox" aria-hidden="true">
+          <div class="checkmark">✓</div>
+          <div class="close-text">Luk vinduet</div>
+        </div>
+
         <div class="line" aria-hidden="true"></div>
         <div class="segments" id="segments"></div>
         <div class="marker" id="marker" aria-hidden="true"></div>
+        <div class="status" id="status"></div>
       </main>
     </div>
   </div>
-
-  <div class="status" id="status"></div>
 
   <script>
     (function () {
@@ -261,15 +307,15 @@
       const segments = document.getElementById('segments');
       const marker = document.getElementById('marker');
       const status = document.getElementById('status');
-      const checkmark = document.getElementById('checkmark');
+      const successBox = document.getElementById('successBox');
 
       function setStatus(message, kind) {
         status.textContent = message || '';
         status.className = 'status' + (kind ? ' ' + kind : '');
       }
 
-      function saveValue(value) {
-        return fetch('/.netlify/functions/save-rpe', {
+      async function saveValue(value) {
+        const response = await fetch('/.netlify/functions/save-rpe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -281,13 +327,15 @@
             value: value,
             complete_field: context.complete_field
           })
-        }).then(async (res) => {
-          const body = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            throw new Error(body.error || 'Kunne ikke gemme værdien.');
-          }
-          return body;
         });
+
+        const body = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(body.details || body.error || 'Kunne ikke gemme værdien.');
+        }
+
+        return body;
       }
 
       function fitStage() {
@@ -318,6 +366,10 @@
         seg.appendChild(text);
 
         seg.addEventListener('click', async () => {
+          successBox.classList.remove('show');
+          setStatus('');
+          marker.style.display = 'none';
+
           const rect = seg.getBoundingClientRect();
           const parentRect = segments.getBoundingClientRect();
           const topPad = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top-pad')) || 0;
@@ -328,11 +380,10 @@
 
           try {
             await saveValue(value);
-            checkmark.classList.add('show');
             marker.style.display = 'none';
+            successBox.classList.add('show');
             setStatus('Registreret.', 'ok');
           } catch (err) {
-            checkmark.classList.remove('show');
             setStatus(err.message || 'Kunne ikke gemme værdien.', 'error');
           }
         });
