@@ -30,7 +30,7 @@
       --top-anchor-shift: 4px;
       --bottom-anchor-shift: -4px;
 
-      --check-left: 4px;
+      --check-left: -10px;
       --check-size: 20px;
     }
 
@@ -178,12 +178,12 @@
 
     .success-box {
       position: absolute;
-      left: 0;
+      left: var(--check-left);
       top: 50%;
       transform: translateY(-50%);
-      width: 62px;
+      width: var(--check-size);
+      height: var(--check-size);
       display: none;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 20;
@@ -207,16 +207,6 @@
       font-weight: 700;
       line-height: 1;
       box-shadow: 0 1px 2px rgba(0,0,0,0.15);
-      margin-bottom: 6px;
-    }
-
-    .close-text {
-      font-size: 10px;
-      line-height: 1.1;
-      text-align: center;
-      color: #1c8c3a;
-      font-weight: 600;
-      white-space: nowrap;
     }
 
     .status {
@@ -247,14 +237,7 @@
         --text-left: 50px;
         --anchor-size: 13px;
         --check-size: 22px;
-      }
-
-      .success-box {
-        width: 70px;
-      }
-
-      .close-text {
-        font-size: 11px;
+        --check-left: -12px;
       }
 
       .status {
@@ -269,7 +252,6 @@
       <main class="scale-wrap" aria-label="Foster RPE 0 til 100">
         <div class="success-box" id="successBox" aria-hidden="true">
           <div class="checkmark">✓</div>
-          <div class="close-text">Luk vinduet</div>
         </div>
 
         <div class="line" aria-hidden="true"></div>
@@ -353,6 +335,22 @@
         stage.style.transform = `translateX(-50%) scale(${scale})`;
       }
 
+      function tryCloseWindow() {
+        setTimeout(() => {
+          try {
+            window.close();
+          } catch (e) {}
+
+          setTimeout(() => {
+            try {
+              if (window.history.length > 1) {
+                window.history.back();
+              }
+            } catch (e) {}
+          }, 150);
+        }, 1000);
+      }
+
       for (let value = 0; value <= 100; value += 1) {
         const seg = document.createElement('button');
         seg.type = 'button';
@@ -383,6 +381,7 @@
             marker.style.display = 'none';
             successBox.classList.add('show');
             setStatus('Registreret.', 'ok');
+            tryCloseWindow();
           } catch (err) {
             setStatus(err.message || 'Kunne ikke gemme værdien.', 'error');
           }
