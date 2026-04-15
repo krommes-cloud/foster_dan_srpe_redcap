@@ -30,8 +30,10 @@
       --top-anchor-shift: 4px;
       --bottom-anchor-shift: -4px;
 
-      --check-left: -10px;
+      --check-left: -26px;
       --check-size: 20px;
+      --status-left: -34px;
+      --status-width: 56px;
     }
 
     * {
@@ -211,16 +213,17 @@
 
     .status {
       position: absolute;
-      left: 70px;
-      right: 0;
-      bottom: 4px;
-      min-height: 18px;
-      font-size: 11px;
-      line-height: 1.2;
+      left: var(--status-left);
+      top: calc(50% + 20px);
+      width: var(--status-width);
+      min-height: 28px;
+      font-size: 10px;
+      line-height: 1.15;
       color: #8b0000;
-      background: #fff;
+      background: transparent;
       z-index: 25;
-      padding-right: 4px;
+      text-align: center;
+      word-break: break-word;
     }
 
     .status.ok {
@@ -237,11 +240,13 @@
         --text-left: 50px;
         --anchor-size: 13px;
         --check-size: 22px;
-        --check-left: -12px;
+        --check-left: -30px;
+        --status-left: -42px;
+        --status-width: 64px;
       }
 
       .status {
-        font-size: 12px;
+        font-size: 11px;
       }
     }
   </style>
