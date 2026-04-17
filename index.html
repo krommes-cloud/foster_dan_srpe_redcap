@@ -9,11 +9,15 @@
       --text: #111;
       --viewport-h: 450px;
 
-      --design-w: 320px;
+      --design-w: 470px;
       --design-h: 450px;
 
-      --feedback-w: 88px;
-      --gap-w: 10px;
+      --feedback-w: 96px;
+      --gap-w: 12px;
+
+      --scale-w: 220px;
+      --hint-w: 130px;
+      --hint-gap: 12px;
 
       --line-x: 30px;
       --line-w: 4px;
@@ -134,14 +138,33 @@
       color: #1c5e20;
     }
 
-    .scale-wrap {
+    .scale-area {
       position: absolute;
       left: calc(var(--feedback-w) + var(--gap-w));
       top: 0;
-      width: calc(var(--design-w) - var(--feedback-w) - var(--gap-w));
+      width: calc(var(--scale-w) + var(--hint-gap) + var(--hint-w));
+      height: 100%;
+    }
+
+    .scale-wrap {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: var(--scale-w);
       height: 100%;
       user-select: none;
       overflow: hidden;
+    }
+
+    .hint-panel {
+      position: absolute;
+      left: calc(var(--scale-w) + var(--hint-gap));
+      top: 50%;
+      transform: translateY(-50%);
+      width: var(--hint-w);
+      font-size: 13px;
+      line-height: 1.3;
+      color: #333;
     }
 
     .line {
@@ -243,22 +266,38 @@
       z-index: 15;
     }
 
-    @media (min-width: 601px) {
+    @media (max-width: 700px) {
       :root {
-        --design-w: 360px;
-        --feedback-w: 96px;
-        --gap-w: 12px;
-
-        --line-x: 34px;
-        --tick-half: 14px;
-        --hit-left: 0px;
-        --hit-width: 205px;
-        --text-left: 50px;
-        --anchor-size: 13px;
-        --check-size: 22px;
+        --design-w: 420px;
+        --feedback-w: 82px;
+        --scale-w: 190px;
+        --hint-w: 120px;
+        --hint-gap: 8px;
+        --line-x: 26px;
+        --hit-width: 170px;
+        --text-left: 38px;
+        --anchor-size: 11px;
       }
 
-      .status {
+      .hint-panel {
+        font-size: 12px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      :root {
+        --design-w: 390px;
+        --feedback-w: 74px;
+        --scale-w: 176px;
+        --hint-w: 110px;
+        --hint-gap: 6px;
+        --line-x: 24px;
+        --hit-width: 160px;
+        --text-left: 36px;
+        --anchor-size: 10px;
+      }
+
+      .hint-panel {
         font-size: 11px;
       }
     }
@@ -277,11 +316,17 @@
         </div>
       </aside>
 
-      <main class="scale-wrap" aria-label="Foster RPE 0 til 100">
-        <div class="line" aria-hidden="true"></div>
-        <div class="segments" id="segments"></div>
-        <div class="marker" id="marker" aria-hidden="true"></div>
-      </main>
+      <div class="scale-area">
+        <main class="scale-wrap" aria-label="Foster RPE 0 til 100">
+          <div class="line" aria-hidden="true"></div>
+          <div class="segments" id="segments"></div>
+          <div class="marker" id="marker" aria-hidden="true"></div>
+        </main>
+
+        <aside class="hint-panel" aria-hidden="true">
+          Klik én gang på skalaen, for at svare på hvor hård din træning/kamp var.
+        </aside>
+      </div>
 
     </div>
   </div>
@@ -350,9 +395,9 @@
         const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
         const designWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--design-w'));
         const maxScale = 1;
-        const minScale = 0.78;
+        const minScale = 0.72;
 
-        const availableWidth = Math.max(220, viewportWidth - 4);
+        const availableWidth = Math.max(260, viewportWidth - 6);
         let scale = availableWidth / designWidth;
 
         if (scale > maxScale) scale = maxScale;
