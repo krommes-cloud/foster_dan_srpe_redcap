@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Status</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      font-family: Arial, Helvetica, sans-serif;
+      overflow: hidden;
+    }
+
+    .wrap {
+      width: 100%;
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      background: #fff;
+      color: #1c5e20;
+      font-size: 16px;
+      line-height: 1.2;
+      padding: 8px 10px;
+      box-sizing: border-box;
+    }
+
+    .muted {
+      color: transparent;
+    }
+
+    .ok {
+      color: #1c8c3a;
+      font-weight: 700;
+    }
+
+    .err {
+      color: #8b0000;
+      font-size: 13px;
+      font-weight: 400;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap muted" id="status">.</div>
+
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+
+      const context = {
+        record: params.get('record') || '',
+        event_name: params.get('event') || '',
+        instance: params.get('instance') || '',
+        repeat_instrument: params.get('repeat_instrument') || '',
+        field: params.get('field') || ''
+      };
+
+      const el = document.getElementById('status');
+      let foundAnswer = false;
+
+      function setMuted() {
+        el.className = 'wrap muted';
+        el.textContent = '.';
+      }
+
+      function setAnswered() {
+        el.className = 'wrap ok';
+        el.textContent = '✓ Skala besvaret';
+      }
+
+      function setError(msg) {
+        el.className = 'wrap err';
+        el.textContent = msg || 'Fejl ved status';
+      }
+
+      async function checkStatus() {
+        if (foundAnswer) return;
+
+        try {
+          const query = new URLSearchParams({
+            record: context.record,
+            event_name: context.event_name,
+            instance: context.instance,
+            repeat_instrument: context.repeat_instrument,
+            field: context.field
+          });
+
+          const res = await fetch('/.netlify/functions/get-rpe-status?' + query.toString(), {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok) {
+            throw new Error(data.details || data.error || 'Kunne ikke hente status.');
+          }
+
+          if (data.answered === true) {
+            foundAnswer = true;
+            setAnswered();
+            return;
+          }
+
+          setMuted();
+        } catch (err) {
+          setError(err.message || 'Kunne ikke hente status.');
+        }
+      }
+
+      if (!context.record || !context.event_name || !context.instance || !context.repeat_instrument || !context.field) {
+        setError('Manglende status-parametre.');
+        return;
+      }
+
+      setMuted();
+      checkStatus();
+      setInterval(checkStatus, 1500);
+    })();
+  </script>
+</body>
+</html>
