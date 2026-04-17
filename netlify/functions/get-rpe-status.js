@@ -97,18 +97,19 @@ exports.handler = async function (event) {
       String(row.redcap_repeat_instance || '') === wantedInstance
     );
 
-    let exactMatch = instanceRows.find(row =>
+    let match = instanceRows.find(row =>
       String(row.redcap_repeat_instrument || '') === wantedInstrument
     );
 
-    const simplifiedRows = (rows || []).map(row => ({
-      redcap_event_name: row.redcap_event_name || '',
-      redcap_repeat_instrument: row.redcap_repeat_instrument || '',
-      redcap_repeat_instance: row.redcap_repeat_instance || '',
-      field_value: row[field]
-    }));
+    if (!match && instanceRows.length === 1) {
+      match = instanceRows[0];
+    }
 
-    const value = exactMatch ? exactMatch[field] : '';
+    if (!match && (rows || []).length === 1) {
+      match = rows[0];
+    }
+
+    const value = match ? match[field] : '';
     const answered = value !== null && value !== undefined && String(value) !== '';
 
     return {
@@ -117,23 +118,7 @@ exports.handler = async function (event) {
       body: JSON.stringify({
         ok: true,
         answered,
-        value: answered ? String(value) : '',
-        debug: {
-          requested: {
-            record,
-            event_name,
-            instance,
-            repeat_instrument,
-            field
-          },
-          total_rows: (rows || []).length,
-          event_rows: eventRows.length,
-          instance_rows: instanceRows.length,
-          exact_match_found: !!exactMatch,
-          exact_match_repeat_instrument: exactMatch ? exactMatch.redcap_repeat_instrument : null,
-          exact_match_repeat_instance: exactMatch ? exactMatch.redcap_repeat_instance : null,
-          rows: simplifiedRows
-        }
+        value: answered ? String(value) : ''
       })
     };
   } catch (err) {
