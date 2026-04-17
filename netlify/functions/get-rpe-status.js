@@ -26,11 +26,14 @@ exports.handler = async function (event) {
     const repeat_instrument = qs.repeat_instrument;
     const field = qs.field;
 
-    if (!record || !event_name || !instance || !repeat_instrument || !field) {
+    if (!record || !event_name || !instance || !field) {
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Missing required parameters' })
+        body: JSON.stringify({
+          error: 'Missing required parameters',
+          received: qs
+        })
       };
     }
 
@@ -82,18 +85,30 @@ exports.handler = async function (event) {
       };
     }
 
-    const wantedInstance = String(instance);
-    const wantedInstrument = String(repeat_instrument);
     const wantedEvent = String(event_name);
+    const wantedInstance = String(instance);
+    const wantedInstrument = String(repeat_instrument || '');
 
-    const match = (rows || []).find((row) => {
-      const rowEvent = String(row.redcap_event_name || '');
-      const rowInstr = String(row.redcap_repeat_instrument || '');
-      const rowInst = String(row.redcap_repeat_instance || '');
-      return rowEvent === wantedEvent && rowInstr === wantedInstrument && rowInst === wantedInstance;
-    });
+    const eventRows = (rows || []).filter(row =>
+      String(row.redcap_event_name || '') === wantedEvent
+    );
 
-    const value = match ? match[field] : '';
+    const instanceRows = eventRows.filter(row =>
+      String(row.redcap_repeat_instance || '') === wantedInstance
+    );
+
+    let exactMatch = instanceRows.find(row =>
+      String(row.redcap_repeat_instrument || '') === wantedInstrument
+    );
+
+    const simplifiedRows = (rows || []).map(row => ({
+      redcap_event_name: row.redcap_event_name || '',
+      redcap_repeat_instrument: row.redcap_repeat_instrument || '',
+      redcap_repeat_instance: row.redcap_repeat_instance || '',
+      field_value: row[field]
+    }));
+
+    const value = exactMatch ? exactMatch[field] : '';
     const answered = value !== null && value !== undefined && String(value) !== '';
 
     return {
@@ -102,7 +117,23 @@ exports.handler = async function (event) {
       body: JSON.stringify({
         ok: true,
         answered,
-        value: answered ? String(value) : ''
+        value: answered ? String(value) : '',
+        debug: {
+          requested: {
+            record,
+            event_name,
+            instance,
+            repeat_instrument,
+            field
+          },
+          total_rows: (rows || []).length,
+          event_rows: eventRows.length,
+          instance_rows: instanceRows.length,
+          exact_match_found: !!exactMatch,
+          exact_match_repeat_instrument: exactMatch ? exactMatch.redcap_repeat_instrument : null,
+          exact_match_repeat_instance: exactMatch ? exactMatch.redcap_repeat_instance : null,
+          rows: simplifiedRows
+        }
       })
     };
   } catch (err) {
