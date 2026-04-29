@@ -44,7 +44,10 @@ exports.handler = async function (event) {
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Missing required parameters' })
+        body: JSON.stringify({
+          error: 'Missing required parameters',
+          received: body
+        })
       };
     }
 
@@ -81,14 +84,27 @@ exports.handler = async function (event) {
 
     const text = await response.text();
 
-    if (!response.ok) {
+    let parsed = null;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      parsed = null;
+    }
+
+    const redcapReturnedError =
+      (parsed && parsed.error) ||
+      (Array.isArray(parsed) && parsed.some(item => item && item.error)) ||
+      (!parsed && typeof text === 'string' && text.toLowerCase().includes('error'));
+
+    if (!response.ok || redcapReturnedError) {
       return {
         statusCode: 502,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           error: 'REDCap API error',
           status: response.status,
-          details: text
+          details: text,
+          attemptedRecord: redcapRecord
         })
       };
     }
@@ -96,7 +112,11 @@ exports.handler = async function (event) {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ok: true, response: text })
+      body: JSON.stringify({
+        ok: true,
+        redcapResponse: parsed || text,
+        attemptedRecord: redcapRecord
+      })
     };
   } catch (err) {
     return {
