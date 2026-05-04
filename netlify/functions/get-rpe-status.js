@@ -21,9 +21,6 @@ exports.handler = async function (event) {
 
     const qs = event.queryStringParameters || {};
     const record = qs.record;
-    const event_name = qs.event_name;
-    const instance = qs.instance;
-    const repeat_instrument = qs.repeat_instrument;
     const field = qs.field;
 
     if (!record || !field) {
@@ -52,11 +49,25 @@ exports.handler = async function (event) {
 
     const response = await fetch(REDCAP_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
       body: formData.toString()
     });
 
     const text = await response.text();
+
+    if (!response.ok) {
+      return {
+        statusCode: 502,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: 'REDCAP API error',
+          status: response.status,
+          details: text
+        })
+      };
+    }
 
     let rows;
     try {
@@ -72,43 +83,24 @@ exports.handler = async function (event) {
       };
     }
 
-    const simplifiedRows = (rows || []).map(row => ({
-      redcap_event_name: row.redcap_event_name || '',
-      redcap_repeat_instrument: row.redcap_repeat_instrument || '',
-      redcap_repeat_instance: row.redcap_repeat_instance || '',
-      field_value: row[field] || ''
-    }));
+    const answeredRows = (rows || []).filter(row => {
+      const value = row[field];
+      return value !== null && value !== undefined && String(value) !== '';
+    });
 
-    const exactMatch = simplifiedRows.find(row =>
-      String(row.redcap_event_name) === String(event_name || '') &&
-      String(row.redcap_repeat_instrument) === String(repeat_instrument || '') &&
-      String(row.redcap_repeat_instance) === String(instance || '')
-    );
+    const latestAnsweredRow = answeredRows.length
+      ? answeredRows[answeredRows.length - 1]
+      : null;
 
-    const anyAnsweredRows = simplifiedRows.filter(row =>
-      row.field_value !== ''
-    );
+    const value = latestAnsweredRow ? String(latestAnsweredRow[field]) : '';
 
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ok: true,
-        answered: exactMatch ? exactMatch.field_value !== '' : false,
-        value: exactMatch ? exactMatch.field_value : '',
-        debug: {
-          requested: {
-            record,
-            event_name,
-            instance,
-            repeat_instrument,
-            field
-          },
-          total_rows: simplifiedRows.length,
-          exact_match: exactMatch || null,
-          any_answered_rows: anyAnsweredRows,
-          all_rows: simplifiedRows
-        }
+        answered: value !== '',
+        value
       })
     };
   } catch (err) {
