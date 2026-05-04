@@ -26,7 +26,7 @@ exports.handler = async function (event) {
     const repeat_instrument = qs.repeat_instrument;
     const field = qs.field;
 
-    if (!record || !event_name || !instance || !field) {
+    if (!record || !field) {
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -49,7 +49,6 @@ exports.handler = async function (event) {
     formData.append('exportDataAccessGroups', 'false');
     formData.append('records[0]', String(record));
     formData.append('fields[0]', String(field));
-    formData.append('events[0]', String(event_name));
 
     const response = await fetch(REDCAP_API_URL, {
       method: 'POST',
@@ -58,18 +57,6 @@ exports.handler = async function (event) {
     });
 
     const text = await response.text();
-
-    if (!response.ok) {
-      return {
-        statusCode: 502,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          error: 'REDCAP API error',
-          status: response.status,
-          details: text
-        })
-      };
-    }
 
     let rows;
     try {
@@ -85,40 +72,43 @@ exports.handler = async function (event) {
       };
     }
 
-    const wantedEvent = String(event_name);
-    const wantedInstance = String(instance);
-    const wantedInstrument = String(repeat_instrument || '');
+    const simplifiedRows = (rows || []).map(row => ({
+      redcap_event_name: row.redcap_event_name || '',
+      redcap_repeat_instrument: row.redcap_repeat_instrument || '',
+      redcap_repeat_instance: row.redcap_repeat_instance || '',
+      field_value: row[field] || ''
+    }));
 
-    const eventRows = (rows || []).filter(row =>
-      String(row.redcap_event_name || '') === wantedEvent
+    const exactMatch = simplifiedRows.find(row =>
+      String(row.redcap_event_name) === String(event_name || '') &&
+      String(row.redcap_repeat_instrument) === String(repeat_instrument || '') &&
+      String(row.redcap_repeat_instance) === String(instance || '')
     );
 
-    const instanceRows = eventRows.filter(row =>
-      String(row.redcap_repeat_instance || '') === wantedInstance
+    const anyAnsweredRows = simplifiedRows.filter(row =>
+      row.field_value !== ''
     );
-
-    let match = instanceRows.find(row =>
-      String(row.redcap_repeat_instrument || '') === wantedInstrument
-    );
-
-    if (!match && instanceRows.length === 1) {
-      match = instanceRows[0];
-    }
-
-    if (!match && (rows || []).length === 1) {
-      match = rows[0];
-    }
-
-    const value = match ? match[field] : '';
-    const answered = value !== null && value !== undefined && String(value) !== '';
 
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ok: true,
-        answered,
-        value: answered ? String(value) : ''
+        answered: exactMatch ? exactMatch.field_value !== '' : false,
+        value: exactMatch ? exactMatch.field_value : '',
+        debug: {
+          requested: {
+            record,
+            event_name,
+            instance,
+            repeat_instrument,
+            field
+          },
+          total_rows: simplifiedRows.length,
+          exact_match: exactMatch || null,
+          any_answered_rows: anyAnsweredRows,
+          all_rows: simplifiedRows
+        }
       })
     };
   } catch (err) {
